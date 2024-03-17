@@ -18,9 +18,6 @@ contract DBBServices {
         uint256 price; // bid price 
         address owner; // project owner
         bool[] isBooked;
-        // Is the project booked on a particular day,
-        // For the sake of simplicity, we assign 0 to Jan 1, 1 to Jan 2 and so on
-        // so isBooked[31] will denote whether the project is booked for Feb 1
     }
 
     uint256 public projectId;
