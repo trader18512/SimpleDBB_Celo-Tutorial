@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity ^0.8.0;
 
 contract DBBServices {
-
     // Owner of the contract
     address public owner;
 
@@ -38,36 +36,15 @@ contract DBBServices {
     // mapping of bidId to Bid object
     mapping(uint256 => Bid) public bids;
 
-    // This event is emitted when a new project is created
-    event NewProject (
-    uint256 indexed projectId
-    );
-
-    // This event is emitted when a new bid is placed
-    event NewBid (
-    uint256 indexed projectId,
-    uint256 indexed bidId
-    );
-
-    // This event is emitted when a bid is accepted
-    event BidAccepted (
-    uint256 indexed projectId,
-    uint256 indexed bidId
-    );
-
-    // This event is emitted when a project milestone is reached
-    event MilestoneReached (
-    uint256 indexed projectId,
-    uint256 milestoneIndex
-    );
-
-    // This event is emitted when a project is completed
-    event ProjectCompleted (
-    uint256 indexed projectId
-    );
+    // Events
+    event NewProject(uint256 indexed projectId, string name);
+    event NewBid(uint256 indexed projectId, uint256 indexed bidId, uint256 bidAmount);
+    event BidAccepted(uint256 indexed projectId, uint256 indexed bidId);
+    event MilestoneReached(uint256 indexed projectId, uint256 milestoneIndex);
+    event ProjectCompleted(uint256 indexed projectId);
 
     // Modifier for functions that can only be used by the owner
-    modifier isOwner {
+    modifier onlyOwner {
         require(msg.sender == owner, "Only the contract owner can call this function");
         _;
     }
@@ -81,64 +58,62 @@ contract DBBServices {
     }
 
     // Emergency stop function
-    function toggleContractActive() isOwner public {
+    function toggleContractActive() public onlyOwner {
         stopped = !stopped;
     }
 
-    
-    // This function is used to create a new project
-    
+    // Create a new project
     function createProject(string memory name, string memory description, uint256 price) public stopInEmergency {
-    projects[projectId] = Project(name, description, true, price, msg.sender, new bool[](365));
-    emit NewProject(projectId++);
+        projects[projectId] = Project(name, description, true, price, msg.sender, new bool[](365));
+        emit NewProject(projectId++, name);
     }
 
-    // This function is used to place a new bid on a project
+    // Place a new bid on a project
     function placeBid(uint256 _projectId, uint256 bidAmount) public payable stopInEmergency {
-    require(projects[_projectId].isActive, "Project with this ID is not active");
-    require(msg.value == bidAmount, "Sent insufficient funds");
+        require(projects[_projectId].isActive, "Project with this ID is not active");
+        require(msg.value == bidAmount, "Sent insufficient funds");
 
-    bids[bidId] = Bid(_projectId, block.timestamp, bidAmount, msg.sender);
-    emit NewBid(_projectId, bidId++);
+        bids[bidId] = Bid(_projectId, block.timestamp, bidAmount, msg.sender);
+        emit NewBid(_projectId, bidId++, bidAmount);
     }
 
-    // This function is used to accept a bid on a project
+    // Accept a bid on a project
     function acceptBid(uint256 _bidId) public stopInEmergency {
-    Bid storage bid = bids[_bidId];
-    Project storage project = projects[bid.projectId];
+        Bid storage bid = bids[_bidId];
+        Project storage project = projects[bid.projectId];
 
-    require(msg.sender == project.owner, "Only the project owner can accept bids");
-    require(project.isActive, "Project with this ID is not active");
+        require(msg.sender == project.owner, "Only the project owner can accept bids");
+        require(project.isActive, "Project with this ID is not active");
 
-    project.isActive = false;
-    project.owner = bid.bidder;
+        project.isActive = false;
+        project.owner = bid.bidder;
 
-    emit BidAccepted(bid.projectId, _bidId);
+        emit BidAccepted(bid.projectId, _bidId);
     }
 
-    // This function is used to mark a project milestone as reached
+    // Mark a project milestone as reached
     function markMilestone(uint256 _projectId, uint256 milestoneIndex) public stopInEmergency {
-    Project storage project = projects[_projectId];
+        Project storage project = projects[_projectId];
 
-    require(msg.sender == project.owner, "Only the project owner can mark milestones");
-    require(milestoneIndex < project.isBooked.length, "Invalid milestone index");
+        require(msg.sender == project.owner, "Only the project owner can mark milestones");
+        require(milestoneIndex < project.isBooked.length, "Invalid milestone index");
 
-    project.isBooked[milestoneIndex] = true;
+        project.isBooked[milestoneIndex] = true;
 
-    emit MilestoneReached(_projectId, milestoneIndex);
+        emit MilestoneReached(_projectId, milestoneIndex);
     }
 
-    // This function is used to mark a project as completed
+    // Mark a project as completed
     function completeProject(uint256 _projectId) public stopInEmergency {
-    Project storage project = projects[_projectId];
+        Project storage project = projects[_projectId];
 
-    require(msg.sender == project.owner, "Only the project owner can complete the project");
+        require(msg.sender == project.owner, "Only the project owner can complete the project");
 
-    emit ProjectCompleted(_projectId);
+        emit ProjectCompleted(_projectId);
     }
 
     // Function to withdraw funds
-    function withdraw() public isOwner {
+    function withdraw() public onlyOwner {
         payable(owner).transfer(address(this).balance);
     }
 }
